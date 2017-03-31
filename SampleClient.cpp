@@ -76,6 +76,13 @@ int analogSamplesPerMocapFrame = 0;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+    hMutex = CreateMutex(NULL,FALSE,NULL);
+	if (hMutex == NULL)
+	{
+		printf("CreateMutex Error: %d\n",GetLastError());
+		return 1;
+	}
+
     int iResult;
      
     // parse command line args
@@ -330,7 +337,7 @@ int CreateClient(int iConnectionType)
 void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 {
 	NatNetClient* pClient = (NatNetClient*) pUserData;
-	float roll_cmd = 0.0, pitch_cmd = 0.0, yaw_cmd = 0.0, thrust_cmd = 100.0;
+	float roll_cmd = 5.5, pitch_cmd = 30.0, yaw_cmd = -80.0, thrust_cmd = 100.0;
 
 	if(fp)
 		_WriteFrame(fp,data);

@@ -80,6 +80,9 @@ void UDPClient(void *dummy)
 				yaw_cmd = g_yaw_cmd;
 				thrust_cmd = g_thrust_cmd;
 				b_new_data = g_new_data;
+				
+				//Debug
+				roll_cmd = 5.5; pitch_cmd = 30.0; yaw_cmd = -80.0; thrust_cmd = 100.0;
 			}
 			ReleaseMutex(hMutex_comm);
 
@@ -121,15 +124,14 @@ void UDPClient(void *dummy)
 
 
 //Constructs the packet containing the attitude and thrust commands. 
-int CreatePacket(UINT8* buffer, float roll,  float pitch,  float yaw,  float thrust)
+int CreatePacket(char* buffer, float roll,  float pitch,  float yaw,  float thrust)
 {
 	int packet_size = 0;
 	//Create header for packet identification
 	((UINT8*)buffer)[0] = '$';
 	((UINT8*)buffer)[1] = 'M';
 	((UINT8*)buffer)[2] = '>';
-	((UINT8*)buffer)[3] = '^';
-	packet_size += 4;//4 bytes corresponding to header above
+	packet_size += 4;//4 bytes corresponding to header and data size
 
 	//Map roll, pitch, yaw values to positive integer range
 	UINT16 ROLL = (roll*100.0f) + 1000.0f;
@@ -145,6 +147,8 @@ int CreatePacket(UINT8* buffer, float roll,  float pitch,  float yaw,  float thr
 	((UINT16 *) (buffer+4))[2] = YAW; 
 	((UINT16 *) (buffer+4))[3] = THRUST;
 	packet_size += 8;//8 bytes corresponding to the 4x2 byte data above
+
+	((UINT8*)buffer)[3] = 8 + 1;//send the data size, current packet size + 1 for the crc value
 
 	//Compute XOR of all bytes to help determine packet integrity on receiver end
 	UINT8 crc = 0;
