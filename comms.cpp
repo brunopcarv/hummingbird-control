@@ -63,15 +63,9 @@ void UDPClient(void *dummy)
     //start communication
     while(1)
     {
-        printf("Enter message : ");
-        gets_s(message);
+        //printf("Enter message : ");
+        //gets_s(message);
 
-
-
-		//If a new mocap frame was processed
-        if (/*b_new_data == true*/ true)
-		{
-			//Shared memory should be accessed using the mutex below
 			dwWaitResult = WaitForSingleObject(hMutex_comm, INFINITE);
 			if (dwWaitResult == WAIT_OBJECT_0)
 			{
@@ -82,8 +76,14 @@ void UDPClient(void *dummy)
 				b_new_data = g_new_data;
 				
 				//Debug
-				roll_cmd = 5.5; pitch_cmd = 30.0; yaw_cmd = -80.0; thrust_cmd = 100.0;
+				//roll_cmd = 5.5; pitch_cmd = 30.0; yaw_cmd = -80.0; thrust_cmd = 100.0;
 			}
+			ReleaseMutex(hMutex_comm);
+
+		//If a new mocap frame was processed
+        if (b_new_data == true)
+		{
+
 			ReleaseMutex(hMutex_comm);
 
 			int packet_size = CreatePacket(message, roll_cmd, pitch_cmd, yaw_cmd, thrust_cmd);
@@ -103,19 +103,21 @@ void UDPClient(void *dummy)
 				g_new_data = b_new_data;
 			}
 			ReleaseMutex(hMutex_comm);
+
+			printf("Sending Thrust: [%f]\n", thrust_cmd);
 		}
          
         //receive a reply and print it
         //clear the buffer by filling null, it might have previously received data
         memset(buf,'\0', BUFLEN);
         //try to receive some data, this is a blocking call
-        if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen) == SOCKET_ERROR)
-        {
-            printf("recvfrom() failed with error code : %d" , WSAGetLastError());
-            exit(EXIT_FAILURE);
-        }
+        //if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen) == SOCKET_ERROR)
+        //{
+        //    printf("recvfrom() failed with error code : %d" , WSAGetLastError());
+        //    exit(EXIT_FAILURE);
+        //}
          
-        puts(buf);
+        //puts(buf);
     }
  
     closesocket(s);
@@ -126,12 +128,16 @@ void UDPClient(void *dummy)
 //Constructs the packet containing the attitude and thrust commands. 
 int CreatePacket(char* buffer, float roll,  float pitch,  float yaw,  float thrust)
 {
-	int packet_size = 0;
+	//All sizes are in bytes
+	int header_size = 4;
+	int data_size = 8;
+	int crc_size = 1;
+	int packet_size = header_size + data_size + crc_size;
 	//Create header for packet identification
 	((UINT8*)buffer)[0] = '$';
 	((UINT8*)buffer)[1] = 'M';
 	((UINT8*)buffer)[2] = '>';
-	packet_size += 4;//4 bytes corresponding to header and data size
+	((UINT8*)buffer)[3] = data_size + crc_size;//Payload after header
 
 	//Map roll, pitch, yaw values to positive integer range
 	UINT16 ROLL = (roll*100.0f) + 1000.0f;
@@ -139,27 +145,23 @@ int CreatePacket(char* buffer, float roll,  float pitch,  float yaw,  float thru
 	UINT16 YAW = (yaw*100.0f) + 1000.0f;
 
 	//Map thrust to integer
-	UINT16 THRUST = thrust*100.0f;
+	UINT16 THRUST = thrust*10.0f;
 
 	//Copy data into the send buffer
 	((UINT16 *) (buffer+4))[0] = ROLL;
 	((UINT16 *) (buffer+4))[1] = PITCH;
 	((UINT16 *) (buffer+4))[2] = YAW; 
 	((UINT16 *) (buffer+4))[3] = THRUST;
-	packet_size += 8;//8 bytes corresponding to the 4x2 byte data above
-
-	((UINT8*)buffer)[3] = 8 + 1;//send the data size, current packet size + 1 for the crc value
 
 	//Compute XOR of all bytes to help determine packet integrity on receiver end
 	UINT8 crc = 0;
-	for (int i = 0; i < (packet_size - 1); i++)
+	for (int i = 0; i < data_size; i++)
 	{
-		crc ^= buffer[i];
+		crc ^= buffer[header_size + i];
 	}
 
 	//Add crc to end of packet
 	((UINT8*)buffer)[12] = crc;
-	packet_size += 1; //1 byte corresponding to crc
 
 	return packet_size;
 }

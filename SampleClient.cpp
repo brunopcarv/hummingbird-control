@@ -63,8 +63,12 @@ extern float g_thrust_cmd;
 
 extern bool g_new_data;
 
+//Global flags
+bool g_user_control = false;
+
 //Thread Safety Variable
-HANDLE hMutex;
+HANDLE hcommsMutex;
+HANDLE huserMutex;
 
 NatNetClient* theClient;
 FILE* fp;
@@ -76,8 +80,15 @@ int analogSamplesPerMocapFrame = 0;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-    hMutex = CreateMutex(NULL,FALSE,NULL);
-	if (hMutex == NULL)
+    hcommsMutex = CreateMutex(NULL,FALSE,NULL);
+	if (hcommsMutex == NULL)
+	{
+		printf("CreateMutex Error: %d\n",GetLastError());
+		return 1;
+	}
+
+	huserMutex = CreateMutex(NULL,FALSE,NULL);
+	if (huserMutex == NULL)
 	{
 		printf("CreateMutex Error: %d\n",GetLastError());
 		return 1;
@@ -223,7 +234,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	//Create UDP Client Thread for ACI Communication
-	HANDLE h_UDPClientThread = (HANDLE)_beginthread(UDPClient, 0, (void*)hMutex);
+	HANDLE h_UDPClientThread = (HANDLE)_beginthread(UDPClient, 0, (void*)hcommsMutex);
 
 	// Ready to receive marker stream!
 	printf("\nClient is connected to server and listening for data...\n");
@@ -231,22 +242,58 @@ int _tmain(int argc, _TCHAR* argv[])
 	int c;
 	bool bExit = false;
 	DWORD dwWaitResult;
-	while(1){};//Remove this once user input is implemented
+
 	while(c =_getch())
 	{
-		dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
-		if (dwWaitResult == WAIT_OBJECT_0)
-		{
 			switch(c)
 			{
+				case 'z':
+					//dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
+					//if (dwWaitResult == WAIT_OBJECT_0)
+					//{
+					//	g_thrust_cmd += 100;
+					//	if (g_thrust_cmd > 1000)
+					//		g_thrust_cmd = 1000;
+					//}
+					//ReleaseMutex(hMutex);
+					break;	
+				case 'x':
+					//dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
+					//if (dwWaitResult == WAIT_OBJECT_0)
+					//{	
+					//	g_thrust_cmd -= 100;
+					//	if (g_thrust_cmd < 0)
+					//		g_thrust_cmd = 0;
+					//}
+					//ReleaseMutex(hMutex);	
+					break;	
+				case 'a':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						g_thrust_cmd = 0;
+						g_roll_cmd = 0;
+						g_pitch_cmd = 0;
+						g_yaw_cmd = -2047;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'u':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						g_user_control = !g_user_control;
+					}
+					ReleaseMutex(huserMutex);	
+					break;
 				case 'q':
 					bExit = true;		
 					break;	
 				default:
 					break;
+
 			}
-		}
-		ReleaseMutex(hMutex);
+		
 		if(bExit)
 			break;
 
@@ -337,12 +384,22 @@ int CreateClient(int iConnectionType)
 void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 {
 	NatNetClient* pClient = (NatNetClient*) pUserData;
-	float roll_cmd = 5.5, pitch_cmd = 30.0, yaw_cmd = -80.0, thrust_cmd = 100.0;
+	//float roll_cmd = 5.5, pitch_cmd = 30.0, yaw_cmd = -80.0, thrust_cmd = 1000.0;
+	float roll_cmd = 0.0, pitch_cmd = 0.0, yaw_cmd = 0.0, thrust_cmd = 0.0;
+	bool bUserControl = false;
+
+	DWORD dwWaitResultUserCtrl = WaitForSingleObject(huserMutex, INFINITE);
+	if (dwWaitResultUserCtrl == WAIT_OBJECT_0)
+	{	
+		bUserControl = g_user_control;
+	}
+	ReleaseMutex(huserMutex);	
 
 	if(fp)
 		_WriteFrame(fp,data);
 	
     int i=0;
+
 
 	// Rigid Bodies
 	//printf("Rigid Bodies [Count=%d]\n", data->nRigidBodies);
@@ -365,16 +422,20 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	}
 
 		//Shared memory should be accessed using the mutex below
-		DWORD dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
+		DWORD dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 		if (dwWaitResult == WAIT_OBJECT_0)
 		{
-			g_roll_cmd = roll_cmd;
-			g_pitch_cmd = pitch_cmd;
-			g_yaw_cmd = yaw_cmd;
-			g_thrust_cmd = thrust_cmd;
+			//printf("DATA_HANDLER(): Updating Globals\n");
+			if (!bUserControl)
+			{
+				g_roll_cmd = roll_cmd;
+				g_pitch_cmd = pitch_cmd;
+				g_yaw_cmd = yaw_cmd;
+				g_thrust_cmd = thrust_cmd;
+			}
 			g_new_data = true;
 		}
-		ReleaseMutex(hMutex);
+		ReleaseMutex(hcommsMutex);
 }
 
 // MessageHandler receives NatNet error/debug messages
