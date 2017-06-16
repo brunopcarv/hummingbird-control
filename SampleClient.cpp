@@ -31,6 +31,7 @@ Usage [optional]:
 */
 
 #include <stdio.h>
+#include <math.h> 
 #include <tchar.h>
 #include <conio.h>
 #include <winsock2.h>
@@ -42,6 +43,7 @@ Usage [optional]:
 #include "NatNetClient.h"
 
 #pragma warning( disable : 4996 )
+#define M_PI 3.14159265358979323846
 
 void _WriteHeader(FILE* fp, sDataDescriptions* pBodyDefs);
 void _WriteFrame(FILE* fp, sFrameOfMocapData* data);
@@ -50,6 +52,8 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData);		// receives
 void __cdecl MessageHandler(int msgType, char* msg);		            // receives NatNet error mesages
 void resetClient();
 int CreateClient(int iConnectionType);
+
+void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double *angle2, double *angle3); // Quaternions to Euler Angle conversion
 
 unsigned int MyServersDataPort = 3130;
 unsigned int MyServersCommandPort = 3131;
@@ -247,27 +251,97 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 			switch(c)
 			{
-				case 'z':
-					//dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
-					//if (dwWaitResult == WAIT_OBJECT_0)
-					//{
-					//	g_thrust_cmd += 100;
-					//	if (g_thrust_cmd > 1000)
-					//		g_thrust_cmd = 1000;
-					//}
-					//ReleaseMutex(hMutex);
-					break;	
 				case 'x':
-					//dwWaitResult = WaitForSingleObject(hMutex, INFINITE);
-					//if (dwWaitResult == WAIT_OBJECT_0)
-					//{	
-					//	g_thrust_cmd -= 100;
-					//	if (g_thrust_cmd < 0)
-					//		g_thrust_cmd = 0;
-					//}
-					//ReleaseMutex(hMutex);	
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						g_thrust_cmd += 0.1;
+						if (g_thrust_cmd > 6)
+							g_thrust_cmd = 6;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'z':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						g_thrust_cmd -= 0.1;
+						if (g_thrust_cmd < 0)
+							g_thrust_cmd = 0;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 's':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						g_roll_cmd += 10;
+						if (g_roll_cmd > 2000)
+							g_roll_cmd = 2000;
+					}
+					ReleaseMutex(hcommsMutex);	
 					break;	
 				case 'a':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						g_roll_cmd -= 10;
+						if (g_roll_cmd < -2000)
+							g_roll_cmd = -2000;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;
+				case 'w':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						g_pitch_cmd += 10;
+						if (g_pitch_cmd > 2000)
+							g_pitch_cmd = 2000;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'q':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						g_pitch_cmd -= 10;
+						if (g_pitch_cmd < -2000)
+							g_pitch_cmd = -2000;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case '2':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						/*if (g_yaw_cmd < -1999)
+							g_yaw_cmd += 1;
+						else
+							g_yaw_cmd += 100;
+						*/
+						g_yaw_cmd += 10;
+						if (g_yaw_cmd > 2000)
+							g_yaw_cmd = 2000;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case '1':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						
+						//if (g_yaw_cmd < -1999)
+						//	g_yaw_cmd -= 1;
+						//else
+						//	g_yaw_cmd -= 100;
+						g_yaw_cmd -= 10;
+						if (g_yaw_cmd < -2047)
+							g_yaw_cmd = -2047;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'i':
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
@@ -286,7 +360,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					}
 					ReleaseMutex(huserMutex);	
 					break;
-				case 'q':
+				case 'o':
 					bExit = true;		
 					break;	
 				default:
@@ -383,6 +457,12 @@ int CreateClient(int iConnectionType)
 // DataHandler receives data from the server
 void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 {
+	//Loops for each Rigidbody
+	double yaw;// in degrees
+	double pitch;// in degrees
+	double roll;// in degrees
+
+
 	NatNetClient* pClient = (NatNetClient*) pUserData;
 	//float roll_cmd = 5.5, pitch_cmd = 30.0, yaw_cmd = -80.0, thrust_cmd = 1000.0;
 	float roll_cmd = 0.0, pitch_cmd = 0.0, yaw_cmd = 0.0, thrust_cmd = 0.0;
@@ -409,9 +489,9 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
         // 0x01 : bool, rigid body was successfully tracked in this frame
         bool bTrackingValid = data->RigidBodies[i].params & 0x01;
 
-		//printf("Rigid Body [ID=%d  Error=%3.2f  Valid=%d]\n", data->RigidBodies[i].ID, data->RigidBodies[i].MeanError, bTrackingValid);
-		//printf("\tx\ty\tz\tqx\tqy\tqz\tqw\n");
-		/*printf("\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\n",
+		/*printf("Rigid Body [ID=%d  Error=%3.2f  Valid=%d]\n", data->RigidBodies[i].ID, data->RigidBodies[i].MeanError, bTrackingValid);
+		printf("\tx\ty\tz\tqx\tqy\tqz\tqw\n");
+		printf("\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\t%3.2f\n",
 			data->RigidBodies[i].x,
 			data->RigidBodies[i].y,
 			data->RigidBodies[i].z,
@@ -420,6 +500,18 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 			data->RigidBodies[i].qz,
 			data->RigidBodies[i].qw);*/
 	}
+
+	GetEulers(data->RigidBodies[0].qx,data->RigidBodies[0].qy, data->RigidBodies[0].qz, data->RigidBodies[0].qw, &yaw, &pitch, &roll);
+	printf("RIGID BODY POSITION\n");
+	printf("X [%f]\n", data->RigidBodies[0].x);
+	printf("Y [%f]\n", data->RigidBodies[0].y);
+	printf("Z [%f]\n", data->RigidBodies[0].z);
+	//printf("qx [%f]\n", data->RigidBodies[0].qx);
+	//printf("qy [%f]\n", data->RigidBodies[0].qy);
+	//printf("qz [%f]\n", data->RigidBodies[0].qz);
+	//printf("qw [%f]\n", data->RigidBodies[0].qw);
+	printf("ROLL [%f]\tPITCH [%f]\tYAW [%f]\t\n", roll,pitch,yaw);
+	
 
 		//Shared memory should be accessed using the mutex below
 		DWORD dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
@@ -432,11 +524,76 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 				g_pitch_cmd = pitch_cmd;
 				g_yaw_cmd = yaw_cmd;
 				g_thrust_cmd = thrust_cmd;
+				
+				//printf("YAAAWWW [%f]\n", yaw(3,1,100,1));
+				printf("##############################\n");
 			}
 			g_new_data = true;
 		}
 		ReleaseMutex(hcommsMutex);
 }
+
+
+// Quaternion to Euler Angle conversion
+void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double *angle2, double *angle3)
+{
+	double &heading = *angle1; //yaw
+	double &attitude = *angle2; //pitch
+	double &bank = *angle3; //roll
+
+	double test = qx*qy + qz*qw;
+	if (test > 0.499)   // singularity at north pole
+	{ 
+		heading = (double) (180/M_PI)*2.0f * atan2(qx,qw);
+		attitude = (double) (180/M_PI)*M_PI/2.0f;
+		bank = 0;
+	}
+	else if (test < -0.499)  // singularity at south pole
+	{  
+		heading = (double) -(180/M_PI)*2.0f * atan2(qx,qw);
+		attitude = (double)  -(180/M_PI)*M_PI/2.0f;
+		bank = 0;
+	}
+	else
+	{
+		double sqx = qx*qx;
+		double sqy = qy*qy;
+		double sqz = qz*qz;
+		heading = (double) (180/M_PI)*atan2((double)2.0*qy*qw-2.0*qx*qz , (double)1 - 2.0*sqy - 2.0*sqz); //yaw
+		attitude = (double)(180/M_PI)*asin(2.0*test); //pitch
+		bank = (double) (180/M_PI)*atan2((double)2.0*qx*qw-2.0*qy*qz , (double)1.0 - 2.0*sqx - 2.0*sqz); //roll
+	}
+
+	//heading = (180/M_PI)*(heading);
+	//attitude = (180/M_PI)*(attitude);
+	//bank = (180/M_PI)*(bank);
+}
+//float yaw(float qx,float qy, float qz, float qw)
+//{
+//  float aux;
+//  float test = qx*qy + qz*qw;;
+//  float num,den;
+//  
+//  if (test > 0.499)   // singularity at north pole
+//	{ 
+//		aux = 2.0f * atan2(qx,qw);
+//	}
+//  else if (test < -0.499)  // singularity at south pole
+//	{ 
+//		aux = 2.0f * atan2(qx,qw);
+//	}
+//  else
+//	{
+//		float sqx = qx*qx;
+//		float sqy = qy*qy;
+//		float sqz = qz*qz;
+//		num = 2.0*qy*qw-2.0*qx*qz;
+//		den = 1 - 2.0*sqy - 2.0*sqz;
+//		aux = atan2(num, den); //yaw
+//  }
+//  return aux;
+//}
+
 
 // MessageHandler receives NatNet error/debug messages
 void __cdecl MessageHandler(int msgType, char* msg)
