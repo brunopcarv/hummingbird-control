@@ -82,6 +82,9 @@ char szServerIPAddress[128] = "";
 
 int analogSamplesPerMocapFrame = 0;
 
+int countPrintf = 0;
+void ClearScreen2();
+
 int _tmain(int argc, _TCHAR* argv[])
 {
     hcommsMutex = CreateMutex(NULL,FALSE,NULL);
@@ -275,9 +278,9 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
-						g_roll_cmd += 10;
-						if (g_roll_cmd > 2000)
-							g_roll_cmd = 2000;
+						g_roll_cmd += 0.5;
+						if (g_roll_cmd > 52)
+							g_roll_cmd = 52;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -285,9 +288,9 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
-						g_roll_cmd -= 10;
-						if (g_roll_cmd < -2000)
-							g_roll_cmd = -2000;
+						g_roll_cmd -= 0.5;
+						if (g_roll_cmd < -52)
+							g_roll_cmd = -52;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;
@@ -295,9 +298,9 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
-						g_pitch_cmd += 10;
-						if (g_pitch_cmd > 2000)
-							g_pitch_cmd = 2000;
+						g_pitch_cmd += 0.5;
+						if (g_pitch_cmd > 52)
+							g_pitch_cmd = 52;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -305,9 +308,9 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
-						g_pitch_cmd -= 10;
-						if (g_pitch_cmd < -2000)
-							g_pitch_cmd = -2000;
+						g_pitch_cmd -= 0.5;
+						if (g_pitch_cmd < -52)
+							g_pitch_cmd = -52;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -320,9 +323,9 @@ int _tmain(int argc, _TCHAR* argv[])
 						else
 							g_yaw_cmd += 100;
 						*/
-						g_yaw_cmd += 10;
-						if (g_yaw_cmd > 2000)
-							g_yaw_cmd = 2000;
+						g_yaw_cmd += 1;
+						if (g_yaw_cmd > 100)
+							g_yaw_cmd = 100;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -335,9 +338,9 @@ int _tmain(int argc, _TCHAR* argv[])
 						//	g_yaw_cmd -= 1;
 						//else
 						//	g_yaw_cmd -= 100;
-						g_yaw_cmd -= 10;
-						if (g_yaw_cmd < -2047)
-							g_yaw_cmd = -2047;
+						g_yaw_cmd -= 1;
+						if (g_yaw_cmd < -100)
+							g_yaw_cmd = -100;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -502,6 +505,12 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	}
 
 	GetEulers(data->RigidBodies[0].qx,data->RigidBodies[0].qy, data->RigidBodies[0].qz, data->RigidBodies[0].qw, &yaw, &pitch, &roll);
+	
+	
+
+	if (countPrintf == 100)
+	{
+	ClearScreen2();
 	printf("RIGID BODY POSITION\n");
 	printf("X [%f]\n", data->RigidBodies[0].x);
 	printf("Y [%f]\n", data->RigidBodies[0].y);
@@ -511,7 +520,12 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	//printf("qz [%f]\n", data->RigidBodies[0].qz);
 	//printf("qw [%f]\n", data->RigidBodies[0].qw);
 	printf("ROLL [%f]\tPITCH [%f]\tYAW [%f]\t\n", roll,pitch,yaw);
-	
+	//printf("YAAAWWW [%f]\n", yaw(3,1,100,1));
+	printf("##############################\n");
+	countPrintf = 0;
+	}
+	countPrintf ++;
+
 
 		//Shared memory should be accessed using the mutex below
 		DWORD dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
@@ -525,8 +539,7 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 				g_yaw_cmd = yaw_cmd;
 				g_thrust_cmd = thrust_cmd;
 				
-				//printf("YAAAWWW [%f]\n", yaw(3,1,100,1));
-				printf("##############################\n");
+				
 			}
 			g_new_data = true;
 		}
@@ -593,6 +606,43 @@ void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double
 //  }
 //  return aux;
 //}
+
+void ClearScreen2()
+{
+	HANDLE                     hStdOut;
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	DWORD                      count;
+	DWORD                      cellCount;
+	COORD                      homeCoords = { 0, 0 };
+
+	hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
+	if (hStdOut == INVALID_HANDLE_VALUE) return;
+
+	/* Get the number of cells in the current buffer */
+	if (!GetConsoleScreenBufferInfo( hStdOut, &csbi )) return;
+	cellCount = csbi.dwSize.X *csbi.dwSize.Y;
+
+	/* Fill the entire buffer with spaces */
+	if (!FillConsoleOutputCharacter(
+		hStdOut,
+		(TCHAR) ' ',
+		cellCount,
+		homeCoords,
+		&count
+		)) return;
+
+	/* Fill the entire buffer with the current colors and attributes */
+	if (!FillConsoleOutputAttribute(
+		hStdOut,
+		csbi.wAttributes,
+		cellCount,
+		homeCoords,
+		&count
+		)) return;
+
+	/* Move the cursor home */
+	SetConsoleCursorPosition( hStdOut, homeCoords );
+}
 
 
 // MessageHandler receives NatNet error/debug messages

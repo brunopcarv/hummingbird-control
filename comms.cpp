@@ -25,6 +25,7 @@ extern float g_thrust_cmd;
 
 extern bool g_new_data;
 
+int countPrintf2 = 0;
 
 void UDPClient(void *dummy)
 {
@@ -106,11 +107,19 @@ void UDPClient(void *dummy)
 			}
 			ReleaseMutex(hMutex_comm);
 
+
+			if (countPrintf2 == 100)
+			{
 			printf("Sending Thrust: [%f]\n", thrust_cmd);
 			printf("Sending roll: [%f]\n", roll_cmd);
 			printf("Sending pitch: [%f]\n", pitch_cmd);
 			printf("Sending yaw: [%f]\n", yaw_cmd);
 			printf("##############################\n");
+			countPrintf2 = 0;
+			}
+			else
+			countPrintf2 ++;
+
 
 		}
          
