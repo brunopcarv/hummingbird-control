@@ -108,7 +108,7 @@ void UDPClient(void *dummy)
 			ReleaseMutex(hMutex_comm);
 
 
-			if (countPrintf2 == 100)
+			if (countPrintf2 == 60)
 			{
 			printf("Sending Thrust: [%f]\n", thrust_cmd);
 			printf("Sending roll: [%f]\n", roll_cmd);

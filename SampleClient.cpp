@@ -31,6 +31,10 @@ Usage [optional]:
 */
 
 #include <stdio.h>
+#include <winsock2.h>
+#include <windows.h>
+//#include <time.h> 
+//#include <fstream>
 #include <math.h> 
 #include <tchar.h>
 #include <conio.h>
@@ -42,6 +46,7 @@ Usage [optional]:
 #include "NatNetTypes.h"
 #include "NatNetClient.h"
 
+#pragma comment(lib, "winmm.lib")
 #pragma warning( disable : 4996 )
 #define M_PI 3.14159265358979323846
 
@@ -54,7 +59,8 @@ void resetClient();
 int CreateClient(int iConnectionType);
 
 void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double *angle2, double *angle3); // Quaternions to Euler Angle conversion
-
+float PID(float error, float _kp, float _ki, float _kd, double *_last_t, float *_last_error, float *_integrator, float *_last_derivative);
+void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody);
 unsigned int MyServersDataPort = 3130;
 unsigned int MyServersCommandPort = 3131;
 int iConnectionType = ConnectionType_Multicast;
@@ -84,6 +90,49 @@ int analogSamplesPerMocapFrame = 0;
 
 int countPrintf = 0;
 void ClearScreen2();
+
+// -- PID Control
+const float fCut = 90;//30; //[Hz] Cut off frequency for the low pass filter
+const float g = 9.81f;
+const float _imax = 3; //Used in the PID controller for saturating the integrator component
+
+//==================================PID Variables=========================================
+float _last_error_x[2]={0,0};
+float _integrator_x[2]={0,0};
+float _last_derivative_x[2]={0,0};
+double _last_t_x[2]={0,0};
+
+float _last_error_y[2]={0,0};
+float _integrator_y[2]={0,0};
+float _last_derivative_y[2]={0,0};
+double _last_t_y[2]={0,0};
+
+float _last_error_z[2]={0,0};
+float _integrator_z[2]={0,0};
+float _last_derivative_z[2]={0,0};
+double _last_t_z[2]={0,0};
+
+float _last_error_yaw[2]={0,0};
+float _integrator_yaw[2]={0,0};
+float _last_derivative_yaw[2]={0,0};
+double _last_t_yaw[2]={0,0};
+
+// PID Gains for X,Y,Z (roll, pitch and yaw are onboard accessed through baseflight software)
+float kp_x=0.8,ki_x=0,kd_x=1.8;
+float kp_y=0.8,ki_y=0,kd_y=1.8;
+float kp_z=12,ki_z=0,kd_z=8;
+float kp_yaw=2.1,ki_yaw=0,kd_yaw=0.66;
+//===========================================================================================
+
+// Desired Reference
+float x_ref=0.0, y_ref=0.0, z_ref=0.3, yaw_ref=0.0; //
+float roll_ref=0.0, pitch_ref=0.0;  //
+
+
+// HUMMINBIRD CONSTANTS
+const double m = 0.71;
+
+
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -258,7 +307,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
-						g_thrust_cmd += 0.1;
+						g_thrust_cmd += 0.1f;
 						if (g_thrust_cmd > 6)
 							g_thrust_cmd = 6;
 					}
@@ -268,7 +317,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
-						g_thrust_cmd -= 0.1;
+						g_thrust_cmd -= 0.1f;
 						if (g_thrust_cmd < 0)
 							g_thrust_cmd = 0;
 					}
@@ -344,6 +393,89 @@ int _tmain(int argc, _TCHAR* argv[])
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
+				case 'v':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						z_ref += 0.05;
+						if (z_ref > 1)
+							z_ref = 1;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'c':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						z_ref -= 0.05;
+						if (z_ref < 0)
+							z_ref = 0;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'f':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						x_ref += 0.05;
+						if (x_ref > 1)
+							x_ref = 1;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'd':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						x_ref -= 0.05;
+						if (x_ref < -1)
+							x_ref = -1;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+
+				case 'r':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						y_ref += 0.05;
+						if (y_ref > 1)
+							y_ref = 1;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case 'e':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						y_ref -= 0.05;
+						if (y_ref < -1)
+							y_ref = -1;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				
+				case '4':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						yaw_ref += 5;
+						if (yaw_ref > 180)
+							yaw_ref = 180;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+				case '3':
+					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{
+						yaw_ref -= 5;
+						if (yaw_ref < -100)
+							yaw_ref = -180;
+					}
+					ReleaseMutex(hcommsMutex);	
+					break;	
+					
 				case 'i':
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
@@ -461,7 +593,7 @@ int CreateClient(int iConnectionType)
 void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 {
 	//Loops for each Rigidbody
-	double yaw;// in degrees
+	double yaw=0.0;// in degrees
 	double pitch;// in degrees
 	double roll;// in degrees
 
@@ -504,27 +636,40 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 			data->RigidBodies[i].qw);*/
 	}
 
+
+	// Change global reference frame x = -x
+	data->RigidBodies[0].x = data->RigidBodies[0].x*-1; // x = -x because the frame of reference for cameras is different from the frame used in the controller
+
+	// Calculate Euler Angles from quaternions
 	GetEulers(data->RigidBodies[0].qx,data->RigidBodies[0].qy, data->RigidBodies[0].qz, data->RigidBodies[0].qw, &yaw, &pitch, &roll);
 	
-	
+	// Correcting the reference frame
+	yaw = -yaw;
 
-	if (countPrintf == 100)
+	if (countPrintf == 60)
 	{
 	ClearScreen2();
 	printf("RIGID BODY POSITION\n");
 	printf("X [%f]\n", data->RigidBodies[0].x);
-	printf("Y [%f]\n", data->RigidBodies[0].y);
-	printf("Z [%f]\n", data->RigidBodies[0].z);
+	printf("Y [%f]\n", -data->RigidBodies[0].z);
+	printf("Z [%f]\n", data->RigidBodies[0].y);
 	//printf("qx [%f]\n", data->RigidBodies[0].qx);
 	//printf("qy [%f]\n", data->RigidBodies[0].qy);
 	//printf("qz [%f]\n", data->RigidBodies[0].qz);
 	//printf("qw [%f]\n", data->RigidBodies[0].qw);
-	printf("ROLL [%f]\tPITCH [%f]\tYAW [%f]\t\n", roll,pitch,yaw);
-	//printf("YAAAWWW [%f]\n", yaw(3,1,100,1));
+	printf("ROLL [%f]  PITCH [%f] YAW [%f]\t\n", roll,pitch,yaw);
+	printf("Z_REF: [%f]  X_REF [%f]  Y_REF [%f]  YAW_REF [%f]\n ", z_ref,x_ref,y_ref,yaw_ref);
+	
 	printf("##############################\n");
 	countPrintf = 0;
 	}
 	countPrintf ++;
+
+
+
+	// CONTROLLER GOES HERE
+	Position_Control(x_ref, y_ref, z_ref, data->RigidBodies[0].x, -data->RigidBodies[0].z, data->RigidBodies[0].y, yaw_ref, yaw, &roll_cmd, &pitch_cmd, &yaw_cmd, &thrust_cmd, 0);
+
 
 
 		//Shared memory should be accessed using the mutex below
@@ -606,6 +751,130 @@ void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double
 //  }
 //  return aux;
 //}
+
+
+void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody){
+
+	float error_x=0, error_y=0, error_z=0, error_yaw=0;
+	float a_x=0, a_y=0, a_z=0; // Acceleration in each axis
+	float yaw_rate=0;
+
+	error_x = (xd-xc);
+	error_y = (yd-yc);
+	error_z = (zd-zc);
+	error_yaw = (yawd-yaw);
+
+	//printf("\nERROR x:%f y: %f z: %f yaw: %f\n ",error_x,error_y,error_z,error_yaw);
+
+	a_x = PID(error_x,kp_x,ki_x,kd_x, &_last_t_x[nBody], &_last_error_x[nBody], &_integrator_x[nBody], &_last_derivative_x[nBody]);
+	a_y = PID(error_y,kp_y,ki_y,kd_y, &_last_t_y[nBody], &_last_error_y[nBody], &_integrator_y[nBody], &_last_derivative_y[nBody]);
+	a_z = PID(error_z,kp_z,ki_z,kd_z, &_last_t_z[nBody], &_last_error_z[nBody], &_integrator_z[nBody], &_last_derivative_z[nBody]);
+	yaw_rate = PID(error_yaw,kp_yaw,ki_yaw,kd_yaw, &_last_t_yaw[nBody], &_last_error_yaw[nBody], &_integrator_yaw[nBody], &_last_derivative_yaw[nBody]);
+
+
+	//printf("\nAfter PID Ax:%f ay: %f az: %f yaw: %f Sinyaw: %f Cosyaw: %f\n ",a_x,a_y,a_z,yaw, sin(yaw*M_PI/180), cos(yaw*M_PI/180));
+
+	*roll_sp= -(float)(a_x*sin(yaw*M_PI/180)-a_y*cos(yaw*M_PI/180))/M_PI*180;
+	*pitch_sp= (float)(-a_x*cos(yaw*M_PI/180)-a_y*sin(yaw*M_PI/180))/M_PI*180;
+	//*roll_sp= (float)1/g*(a_x*sin(yaw)-a_y*cos(yaw))/M_PI*180;
+	//*pitch_sp= (float)1/g*(a_x*cos(yaw)+a_y*sin(yaw))/M_PI*180;
+	*yaw_sp= yaw_rate;
+
+	*d_hov_speed= (float)(a_z+g)*m;
+
+	//*d_hov_speed= (int) (m/(8*KF*hov_speed))*a_z;
+
+	//Spiri Values
+	//*d_hov_speed= (int) (m_spiri/(8*KF_spiri*hov_speed))*a_z;
+
+	return;
+}
+//
+//void reset_PID(){
+//	//_last_error_x=0;
+//	//_integrator_x=0;
+//	//_last_derivative_x=0;
+//	//_last_t_x=0;
+//
+//	//_last_error_y=0;
+//	//_integrator_y=0;
+//	//_last_derivative_y=0;
+//	//_last_t_y=0;
+//
+//	//_last_error_z=0;
+//	//_integrator_z=0;
+//	//_last_derivative_z=0;
+//	//_last_t_z=0;
+//
+//	return;
+//}
+//
+float PID(float error, float _kp, float _ki, float _kd, double *_last_t, float *_last_error, float *_integrator, float *_last_derivative)
+{
+	//printf("\n");
+
+	float output = 0;
+	double  tnow = timeGetTime();
+	double dt = tnow - *_last_t;
+	float delta_time;
+
+	if(*_last_t == 0 || dt > 1000){
+		dt=0;	// If this PID hasn't been used for a full second then zero
+		// the integrator term. This prevents I buildup from a previous
+		// flight mode causing a massive return before the integrator
+		//	gets a chance to correct itself.
+		* _integrator = 0;
+	}
+
+	*_last_t = tnow;
+	delta_time= (float) dt/1000.0;
+
+	//Compute proportional component
+	output += error * _kp;
+
+	//Compute derivative component if time has elapsed
+	if (((_kd*_kd)>0)&&(dt>0)){
+		float derivative = (error - *_last_error)/delta_time;
+
+		//discrete low pass filter, cuts ou the
+		//high frequency noise that can drive the controller crazy
+		float RC = 1/(2*M_PI*fCut);
+
+		derivative = (float) (*_last_derivative +   (derivative - *_last_derivative));
+
+		//update state
+		*_last_error = error;
+		*_last_derivative = derivative;
+
+		//add in derivative component
+		derivative = derivative * _kd;
+		output += derivative;
+		//printf("derivative: %f ",derivative);
+	}
+
+	//Compute integral component if time has elapsed
+	if (((_ki*_ki)>0)&&(dt>0)){
+		//printf("integrator before: %f",*_integrator);
+		*_integrator = *_integrator + (error * _ki) * delta_time;
+		//printf("(error * _ki) * delta_time: %f ", (error * _ki) * delta_time);
+		//printf("delta_time: %f error: %f _ki: %f ", delta_time,error,_ki);
+		if(*_integrator < -_imax){
+			*_integrator = -_imax;
+		} else if(*_integrator >_imax){
+			*_integrator = _imax;
+		}
+
+		output += *_integrator;
+
+		//	printf("inegrator: %f ",*_integrator);
+	}
+
+	//printf("proportional %f output: %f \n ",error * _kp, output);
+
+	return output;
+}
+
+
 
 void ClearScreen2()
 {
