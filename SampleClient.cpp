@@ -118,24 +118,42 @@ float _last_derivative_yaw[2]={0,0};
 double _last_t_yaw[2]={0,0};
 
 // PID Gains for X,Y,Z (roll, pitch and yaw are onboard accessed through baseflight software)
-float kp_x=0.8,ki_x=0,kd_x=1.8;
-float kp_y=0.8,ki_y=0,kd_y=1.8;
-float kp_z=12,ki_z=0,kd_z=8;
+float kp_x=1.0,ki_x=0.1,kd_x=2.0;
+float kp_y=1.0,ki_y=0.1,kd_y=2.0;
+float kp_z=12,ki_z=0.2,kd_z=8;
 float kp_yaw=2.1,ki_yaw=0,kd_yaw=0.66;
 //===========================================================================================
 
 // Desired Reference
-float x_ref=0.0, y_ref=0.0, z_ref=0.3, yaw_ref=0.0; //
+float x_ref=0.0, y_ref=0.0, z_ref=0.5, yaw_ref=0.0; //
 float roll_ref=0.0, pitch_ref=0.0;  //
 
 
 // HUMMINBIRD CONSTANTS
 const double m = 0.71;
 
+//Record data in a CSV file
+FILE *Record; // File for recording data
 
+double  start_time; //program start time
+
+
+//Maneuvers
+double  start_maneuver_time = 0;
+double  maneuver_time = 0;
+int show_maneuver_num = 10;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	start_time = timeGetTime();
+	// -- Prepare the USB port to send data
+	// Open the highest available serial port number 
+	Record = fopen("Record.csv","w"); // File for recording data
+	//fprintf(stderr, "Opening serial port...");
+	//Record.csv column headers
+	fprintf(Record, "PC Time, Mocap_X, Mocap_y, Mocap_z, Mocap_yaw, Mocap_pitch, Mocap_roll \n"); 
+
+
     hcommsMutex = CreateMutex(NULL,FALSE,NULL);
 	if (hcommsMutex == NULL)
 	{
@@ -307,6 +325,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						g_thrust_cmd += 0.1f;
 						if (g_thrust_cmd > 6)
 							g_thrust_cmd = 6;
@@ -317,6 +336,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
+						show_maneuver_num = 10;
 						g_thrust_cmd -= 0.1f;
 						if (g_thrust_cmd < 0)
 							g_thrust_cmd = 0;
@@ -327,6 +347,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						g_roll_cmd += 0.5;
 						if (g_roll_cmd > 52)
 							g_roll_cmd = 52;
@@ -337,6 +358,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
+						show_maneuver_num = 10;
 						g_roll_cmd -= 0.5;
 						if (g_roll_cmd < -52)
 							g_roll_cmd = -52;
@@ -347,6 +369,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						g_pitch_cmd += 0.5;
 						if (g_pitch_cmd > 52)
 							g_pitch_cmd = 52;
@@ -357,6 +380,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
+						show_maneuver_num = 10;
 						g_pitch_cmd -= 0.5;
 						if (g_pitch_cmd < -52)
 							g_pitch_cmd = -52;
@@ -367,6 +391,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						/*if (g_yaw_cmd < -1999)
 							g_yaw_cmd += 1;
 						else
@@ -382,7 +407,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
-						
+						show_maneuver_num = 10;
 						//if (g_yaw_cmd < -1999)
 						//	g_yaw_cmd -= 1;
 						//else
@@ -397,6 +422,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						z_ref += 0.05;
 						if (z_ref > 1)
 							z_ref = 1;
@@ -407,6 +433,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						z_ref -= 0.05;
 						if (z_ref < 0)
 							z_ref = 0;
@@ -417,6 +444,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						x_ref += 0.05;
 						if (x_ref > 1)
 							x_ref = 1;
@@ -427,6 +455,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						x_ref -= 0.05;
 						if (x_ref < -1)
 							x_ref = -1;
@@ -438,6 +467,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						y_ref += 0.05;
 						if (y_ref > 1)
 							y_ref = 1;
@@ -448,6 +478,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						y_ref -= 0.05;
 						if (y_ref < -1)
 							y_ref = -1;
@@ -459,6 +490,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						yaw_ref += 5;
 						if (yaw_ref > 180)
 							yaw_ref = 180;
@@ -469,6 +501,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{
+						show_maneuver_num = 10;
 						yaw_ref -= 5;
 						if (yaw_ref < -100)
 							yaw_ref = -180;
@@ -480,6 +513,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
+						show_maneuver_num = 10;
 						g_thrust_cmd = 0;
 						g_roll_cmd = 0;
 						g_pitch_cmd = 0;
@@ -492,10 +526,45 @@ int _tmain(int argc, _TCHAR* argv[])
 					if (dwWaitResult == WAIT_OBJECT_0)
 					{	
 						g_user_control = !g_user_control;
+						show_maneuver_num = 10;
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case 'l':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 0; //forced origin landing		
 					}
 					ReleaseMutex(huserMutex);	
 					break;
 				case 'o':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						maneuver_time = 0;
+						start_maneuver_time = timeGetTime();
+						show_maneuver_num = 1; //circle		
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case 'p':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 2; //wand height control	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case ';':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 3; //landing	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case 'b':
 					bExit = true;		
 					break;	
 				default:
@@ -512,6 +581,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	theClient->Uninitialize();
 	_WriteFooter(fp);
 	fclose(fp);
+
+	fclose(Record);
 
 	return ErrorCode_OK;
 }
@@ -646,6 +717,9 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	// Correcting the reference frame
 	yaw = -yaw;
 
+	//Tme
+	double  time = 1.0*(timeGetTime()-start_time)/1000.0;// [s]
+
 	if (countPrintf == 60)
 	{
 	ClearScreen2();
@@ -665,12 +739,46 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	}
 	countPrintf ++;
 
+	// WAND as reference
+	// for height
+	//z_ref = data->RigidBodies[1].y;
+	//for Y Axis
+	//y_ref = -data->RigidBodies[1].z; 
+
+
+	if (show_maneuver_num == 0) { //forced origin landing
+		x_ref = 0;
+		y_ref = 0;
+		z_ref = 0;
+		yaw_ref = 0;
+						
+	}
+	else if (show_maneuver_num == 1) { //circle
+		double  omega = 50; //[degrees/s]
+		
+		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
+		x_ref = 0.5*cos(omega*maneuver_time*M_PI/180);
+		y_ref = 0.5*sin(omega*maneuver_time*M_PI/180);
+		z_ref = 0.3;
+	
+	}
+	else if (show_maneuver_num ==2) { //wand height control	
+		z_ref = data->RigidBodies[1].y;
+	}
+	else if (show_maneuver_num ==3) { //landing
+		x_ref = data->RigidBodies[0].x;
+		y_ref = -data->RigidBodies[0].z;
+		z_ref = 0;
+		yaw_ref = 0;
+	}
+
 
 
 	// CONTROLLER GOES HERE
 	Position_Control(x_ref, y_ref, z_ref, data->RigidBodies[0].x, -data->RigidBodies[0].z, data->RigidBodies[0].y, yaw_ref, yaw, &roll_cmd, &pitch_cmd, &yaw_cmd, &thrust_cmd, 0);
 
-
+	fprintf(Record,"%f,%f,%f,%f,%f,%f,%f",time,data->RigidBodies[0].x,-data->RigidBodies[0].z,data->RigidBodies[0].y,yaw,pitch,roll);
+	fprintf(Record,"\n"); //new line
 
 		//Shared memory should be accessed using the mutex below
 		DWORD dwWaitResult = WaitForSingleObject(hcommsMutex, INFINITE);
