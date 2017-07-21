@@ -60,7 +60,7 @@ int CreateClient(int iConnectionType);
 
 void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double *angle2, double *angle3); // Quaternions to Euler Angle conversion
 float PID(float error, float _kp, float _ki, float _kd, double *_last_t, float *_last_error, float *_integrator, float *_last_derivative);
-void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody);
+void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float roll, float pitch, float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody);
 unsigned int MyServersDataPort = 3130;
 unsigned int MyServersCommandPort = 3131;
 int iConnectionType = ConnectionType_Multicast;
@@ -118,8 +118,8 @@ float _last_derivative_yaw[2]={0,0};
 double _last_t_yaw[2]={0,0};
 
 // PID Gains for X,Y,Z (roll, pitch and yaw are onboard accessed through baseflight software)
-float kp_x=1.0,ki_x=0.1,kd_x=2.0;
-float kp_y=1.0,ki_y=0.1,kd_y=2.0;
+float kp_x=0.8,ki_x=0.1,kd_x=1.8;
+float kp_y=0.8,ki_y=0.1,kd_y=1.8;
 float kp_z=12,ki_z=0.2,kd_z=8;
 float kp_yaw=2.1,ki_yaw=0,kd_yaw=0.66;
 //===========================================================================================
@@ -151,7 +151,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	Record = fopen("Record.csv","w"); // File for recording data
 	//fprintf(stderr, "Opening serial port...");
 	//Record.csv column headers
-	fprintf(Record, "PC Time, Mocap_X, Mocap_y, Mocap_z, Mocap_yaw, Mocap_pitch, Mocap_roll \n"); 
+	fprintf(Record, "PC Time, Mocap_X, Mocap_y, Mocap_z, Mocap_yaw, Mocap_pitch, Mocap_roll, X_ref, Y_ref, Z_ref \n"); 
 
 
     hcommsMutex = CreateMutex(NULL,FALSE,NULL);
@@ -564,6 +564,26 @@ int _tmain(int argc, _TCHAR* argv[])
 					}
 					ReleaseMutex(huserMutex);	
 					break;
+				case ',':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						maneuver_time = 0;
+						start_maneuver_time = timeGetTime();
+						show_maneuver_num = 4; //lissajous curve	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case '.':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						maneuver_time = 0;
+						start_maneuver_time = timeGetTime();
+						show_maneuver_num = 5; //lissajous curve	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
 				case 'b':
 					bExit = true;		
 					break;	
@@ -754,12 +774,13 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 						
 	}
 	else if (show_maneuver_num == 1) { //circle
-		double  omega = 50; //[degrees/s]
+		double  omega = 18; //[degrees/s]
+		double  A = 0.3; //[degrees/s]
+		double  B = 0.3; //[degrees/s]
 		
 		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
-		x_ref = 0.5*cos(omega*maneuver_time*M_PI/180);
-		y_ref = 0.5*sin(omega*maneuver_time*M_PI/180);
-		z_ref = 0.3;
+		x_ref = A*cos(omega*maneuver_time*M_PI/180);
+		y_ref = B*sin(omega*maneuver_time*M_PI/180);
 	
 	}
 	else if (show_maneuver_num ==2) { //wand height control	
@@ -771,13 +792,131 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 		z_ref = 0;
 		yaw_ref = 0;
 	}
+	else if (show_maneuver_num ==4) { //lissajous curve
+		double  A = 0.3; //[degrees/s]
+		double  B = 0.3; //[degrees/s]
+		double  a = 3; //[degrees/s]
+		double  b = 4; //[degrees/s]
+		double  delta = 90; //[degrees/s]
+		double  w = 5; //[degrees/s]
+
+		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
+
+		x_ref = A*sin((w*a*maneuver_time+delta)*M_PI/180)-A;
+		y_ref = B*sin(w*b*maneuver_time*M_PI/180);
+	}
+	else if (show_maneuver_num ==5) { //lissajous curve
+		double  d = 3; //[time = distance in 10^1 cm]
+		double  v = 0.05;
+		double aux;
+		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
+		double t;
+		
+		if (maneuver_time>=0 & maneuver_time<16*d) {
+			t =  maneuver_time;
+		}
+		else if (maneuver_time>=16*d & maneuver_time<32*d) {
+			t =  maneuver_time-16*d;
+		}
+		else if (maneuver_time>=32*d & maneuver_time<48*d) {
+			t =  maneuver_time-32*d;
+		}
+		else if (maneuver_time>=48*d & maneuver_time<63*d) {
+			t =  maneuver_time-48*d;
+		}
+
+
+		if (t>=0 & t<d) {
+			y_ref = 0;
+			x_ref = t;
+		}
+		else if (t>=d & t<2*d) {
+			y_ref = t - d;
+			x_ref = d;
+		}
+		else if (t>=2*d & t<3*d) {
+			y_ref = d;
+			x_ref = -t +3*d;
+		}
+		else if (t>=3*d & t<5*d) {
+			y_ref = t - 2*d;
+			x_ref = 0;
+		}
+		else if (t>=5*d & t<6*d) {
+			y_ref = 3*d;
+			x_ref = t - 5*d;
+		}
+		else if (t>=6*d & t<7*d) {
+			y_ref = -t + 9*d;
+			x_ref = d;
+		}
+		else if (t>=7*d & t<8*d) {
+			y_ref = 2*d;
+			x_ref = t - 6*d;
+		}
+		else if (t>=8*d & t<9*d) {
+			y_ref = t - 6*d;
+			x_ref = 2*d;
+		}
+		else if (t>=9*d & t<10*d) {
+			y_ref = 3*d;
+			x_ref = t - 7*d;
+		}
+		else if (t>=10*d & t<12*d) {
+			y_ref = -t + 13*d;
+			x_ref = 3*d;
+		}
+		else if (t>=12*d & t<13*d) {
+			y_ref = d;
+			x_ref = -t + 15*d;
+		}
+		else if (t>=13*d & t<14*d) {
+			y_ref = -t + 14*d;
+			x_ref = 2*d;
+		} 
+		else if (t>=14*d & t<16*d) {
+			y_ref = 0;
+			x_ref = t-12*d;
+		}
+
+
+
+		
+		if (maneuver_time>=0 & maneuver_time<16*d) {
+			x_ref = x_ref*v;
+			y_ref = y_ref*v;
+		}
+		else if (maneuver_time>=16*d & maneuver_time<32*d) {
+			aux = (y_ref+4*d)*v;
+			y_ref = x_ref*v;
+			x_ref = aux;
+		}
+		else if (maneuver_time>=32*d & maneuver_time<47*d) {
+			aux = (y_ref+4*d)*v;
+			y_ref = (x_ref+4*d)*v;
+			x_ref = aux;
+		}
+		else if (maneuver_time>=47*d & maneuver_time<48*d) {
+			x_ref = (-t + 19*d)*v;
+			y_ref = (7*d)*v;
+		}
+		else if (maneuver_time>=48*d & maneuver_time<63*d) {
+			x_ref = (-x_ref+3*d)*v;
+			y_ref = (-y_ref+7*d)*v;
+		}
+		else if (maneuver_time>=63*d) {
+			x_ref = 0;
+			y_ref = 7*d*v;
+		}
+
+	}
 
 
 
 	// CONTROLLER GOES HERE
-	Position_Control(x_ref, y_ref, z_ref, data->RigidBodies[0].x, -data->RigidBodies[0].z, data->RigidBodies[0].y, yaw_ref, yaw, &roll_cmd, &pitch_cmd, &yaw_cmd, &thrust_cmd, 0);
+	Position_Control(x_ref, y_ref, z_ref, data->RigidBodies[0].x, -data->RigidBodies[0].z, data->RigidBodies[0].y, yaw_ref, yaw, roll, pitch, &roll_cmd, &pitch_cmd, &yaw_cmd, &thrust_cmd, 0);
 
-	fprintf(Record,"%f,%f,%f,%f,%f,%f,%f",time,data->RigidBodies[0].x,-data->RigidBodies[0].z,data->RigidBodies[0].y,yaw,pitch,roll);
+	fprintf(Record,"%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",time,data->RigidBodies[0].x,-data->RigidBodies[0].z,data->RigidBodies[0].y,yaw,pitch,roll,x_ref,y_ref,z_ref);
 	fprintf(Record,"\n"); //new line
 
 		//Shared memory should be accessed using the mutex below
@@ -861,7 +1000,7 @@ void GetEulers(double qx, double qy, double qz, double qw, double *angle1,double
 //}
 
 
-void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody){
+void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc, float yawd, float yaw, float roll, float pitch,float *roll_sp, float *pitch_sp, float *yaw_sp, float *d_hov_speed, int nBody){
 
 	float error_x=0, error_y=0, error_z=0, error_yaw=0;
 	float a_x=0, a_y=0, a_z=0; // Acceleration in each axis
@@ -887,7 +1026,13 @@ void Position_Control(float xd, float yd, float zd, float xc, float yc, float zc
 	//*roll_sp= (float)1/g*(a_x*sin(yaw)-a_y*cos(yaw))/M_PI*180;
 	//*pitch_sp= (float)1/g*(a_x*cos(yaw)+a_y*sin(yaw))/M_PI*180;
 	*yaw_sp= yaw_rate;
-
+	/*if (abs((cos(roll)*cos(pitch)))<0.6){
+	*d_hov_speed= (float)(a_z+g)*m;
+	}
+	else{
+	*d_hov_speed= (float)(a_z+g)*m/(cos(roll)*cos(pitch));
+	}
+*/
 	*d_hov_speed= (float)(a_z+g)*m;
 
 	//*d_hov_speed= (int) (m/(8*KF*hov_speed))*a_z;
