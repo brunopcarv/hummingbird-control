@@ -42,7 +42,7 @@ Usage [optional]:
 #include <process.h> //multi-threading
 #include "comms.h"
 #include "Globals.h"
-//#include "UDPTHREAD.h"
+#include "UDPTHREAD.h"
 
 #include "NatNetTypes.h"
 #include "NatNetClient.h"
@@ -88,6 +88,7 @@ bool g_user_control = false;
 //Thread Safety Variable
 HANDLE hcommsMutex;
 HANDLE huserMutex;
+HANDLE hUDPxyzMutex;
 
 NatNetClient* theClient;
 FILE* fp;
@@ -152,6 +153,9 @@ double  start_maneuver_time = 0;
 double  maneuver_time = 0;
 int show_maneuver_num = 10;
 
+// Mutex UDP server xyz from Python
+bool b_new_data = false;
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	start_time = timeGetTime();
@@ -162,7 +166,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	//Record.csv column headers
 	fprintf(Record, "PC Time, Mocap_X, Mocap_y, Mocap_z, Mocap_yaw, Mocap_pitch, Mocap_roll, X_ref, Y_ref, Z_ref \n"); 
 
-
+	//Create Mutex
     hcommsMutex = CreateMutex(NULL,FALSE,NULL);
 	if (hcommsMutex == NULL)
 	{
@@ -176,6 +180,14 @@ int _tmain(int argc, _TCHAR* argv[])
 		printf("CreateMutex Error: %d\n",GetLastError());
 		return 1;
 	}
+
+	hUDPxyzMutex = CreateMutex(NULL,FALSE,NULL);
+	if (hUDPxyzMutex == NULL)
+	{
+		printf("CreateMutex Error: %d\n",GetLastError());
+		return 1;
+	}
+
 
     int iResult;
      
@@ -320,7 +332,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	HANDLE h_UDPClientThread = (HANDLE)_beginthread(UDPClient, 0, (void*)hcommsMutex);
 
 	//Create UDP Server Thread for xyz input data
-	//HANDLE h_xyzUDPserverThread = (HANDLE)_beginthread(xyzUDPserver, 0, (void*)hcommsMutex);
+	HANDLE h_xyzUDPserverThread = (HANDLE)_beginthread(xyzUDPserver, 0, (void*)hUDPxyzMutex);
 
 	// Ready to receive marker stream!
 	printf("\nClient is connected to server and listening for data...\n");
@@ -621,6 +633,14 @@ int _tmain(int argc, _TCHAR* argv[])
 					}
 					ReleaseMutex(huserMutex);	
 					break;
+				case '=':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 11; //Curves from python code
+					}
+					ReleaseMutex(huserMutex);	
+					break;
 				case 'b':
 					bExit = true;		
 					break;	
@@ -779,15 +799,16 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 
 	if (countPrintf == 60)
 	{
-	ClearScreen2();
+	//ClearScreen2();
 	printf("RIGID BODY POSITION\n");
 	printf("X [%f]\n", data->RigidBodies[0].x);
 	printf("Y [%f]\n", -data->RigidBodies[0].z);
 	printf("Z [%f]\n", data->RigidBodies[0].y);
-	//printf("qx [%f]\n", data->RigidBodies[0].qx);
-	//printf("qy [%f]\n", data->RigidBodies[0].qy);
-	//printf("qz [%f]\n", data->RigidBodies[0].qz);
-	//printf("qw [%f]\n", data->RigidBodies[0].qw);
+	
+		//printf("qx [%f]\n", data->RigidBodies[0].qx);
+		//printf("qy [%f]\n", data->RigidBodies[0].qy);
+		//printf("qz [%f]\n", data->RigidBodies[0].qz);
+		//printf("qw [%f]\n", data->RigidBodies[0].qw);
 	printf("ROLL [%f]  PITCH [%f] YAW [%f]\t\n", roll,pitch,yaw);
 	printf("Z_REF: [%f]  X_REF [%f]  Y_REF [%f]  YAW_REF [%f]\n ", z_ref,x_ref,y_ref,yaw_ref);
 	
@@ -960,14 +981,44 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 
 	}
 
-
-	else if (show_maneuver_num == 6) { //PID Tunning
+	//PID Tunning
+	else if (show_maneuver_num == 6) { 
 		x_ref = 0.5;
 		y_ref = 0.5;
 	}
 
+	//Curves from python code
+	else if (show_maneuver_num == 11) { 
+		DWORD dwWaitResult = WaitForSingleObject(hUDPxyzMutex, INFINITE);
+			if (dwWaitResult == WAIT_OBJECT_0)
+			{
+				b_new_data = g_input_new_data;
+			}
+		ReleaseMutex(hUDPxyzMutex);
+
+		if (b_new_data == true)
+		{
+			ReleaseMutex(hUDPxyzMutex);
+
+			b_new_data = false;
+
+			dwWaitResult = WaitForSingleObject(hUDPxyzMutex, INFINITE);
+			if (dwWaitResult == WAIT_OBJECT_0)
+			{
+				x_ref = g_input_x;
+				y_ref = g_input_y;
+				z_ref = g_input_z;
+			}
+			ReleaseMutex(hUDPxyzMutex);
+			
+		}
+	}
+
+
+
+
 	// Sefaty code to keep the refs always inside the safe region
-	if (z_ref > 1.5) z_ref = 1.5;
+	if (z_ref > 1.2) z_ref = 1.2;
 	if (z_ref < 0) z_ref = 0;
 	if (x_ref > 0.5) x_ref = 0.5;
 	if (x_ref < -0.5) x_ref = -0.5;

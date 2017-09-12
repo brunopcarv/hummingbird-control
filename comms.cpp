@@ -117,7 +117,6 @@ void UDPClient(void *dummy)
 			printf("##############################\n");
 			countPrintf2 = 0;
 			}
-			else
 			countPrintf2 ++;
 
 

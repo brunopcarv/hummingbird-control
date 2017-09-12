@@ -1,0 +1,103 @@
+﻿Build started 9/12/2017 5:52:34 PM.
+     1>Project "C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\SampleClient\SampleClient.vcxproj" on node 2 (Build target(s)).
+       Project file contains ToolsVersion="12.0". This toolset may be unknown or missing, in which case you may be able to resolve this by installing the appropriate version of MSBuild, or the build may have been forced to a particular ToolsVersion for policy reasons. Treating the project as if it had ToolsVersion="4.0". For more information, please see http://go.microsoft.com/fwlink/?LinkId=291333.
+     1>InitializeBuildStatus:
+         Creating "Debug\SampleClient.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /I..\..\include\ /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _VC80_UPGRADE=0x0710 /D _MBCS /Gm- /EHsc /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt SampleClient.cpp
+         SampleClient.cpp
+     1>SampleClient.cpp(131): warning C4305: 'initializing' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(132): warning C4305: 'initializing' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(133): warning C4305: 'initializing' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(134): warning C4305: 'initializing' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(450): warning C4305: '+=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(461): warning C4305: '-=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(472): warning C4305: '+=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(483): warning C4305: '-=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(495): warning C4305: '+=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(506): warning C4305: '-=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(840): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(841): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(854): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(874): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(875): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(884): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(887): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(890): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(893): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(898): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(900): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(902): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(903): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(904): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(906): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(907): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(908): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(910): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(911): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(914): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(915): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(916): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(918): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(919): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(920): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(922): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(923): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(924): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(926): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(927): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(928): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(930): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(931): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(932): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(934): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(935): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(936): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(938): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(939): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(940): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(942): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(943): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(944): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(946): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(948): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(955): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(956): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(957): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(959): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(961): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(962): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(964): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(966): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(967): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(969): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(970): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(971): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(973): warning C4554: '&' : check operator precedence for possible error; use parentheses to clarify precedence
+     1>SampleClient.cpp(974): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(975): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(979): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(1021): warning C4305: '=' : truncation from 'double' to 'float'
+     1>SampleClient.cpp(1030): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(1137): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(1138): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(1149): warning C4244: '=' : conversion from 'const double' to 'float', possible loss of data
+     1>SampleClient.cpp(1196): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SampleClient.cpp(1207): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\\bin\SampleClient.exe" /INCREMENTAL /NOLOGO /LIBPATH:..\..\lib NatNetLibStatic.lib ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\\bin\SampleClient.pdb" /ASSEMBLYDEBUG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\\bin\SampleClient.lib" /MACHINE:X86 /SAFESEH 
+          Debug\comms.obj
+         Debug\Globals.obj
+         Debug\SampleClient.obj
+         Debug\JSON.obj
+         Debug\JSONValue.obj
+         Debug\UDPTHREAD.obj
+         SampleClient.vcxproj -> C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\\bin\SampleClient.exe
+       FinalizeBuildStatus:
+         Deleting file "Debug\SampleClient.unsuccessfulbuild".
+         Touching "Debug\SampleClient.lastbuildstate".
+     1>Done Building Project "C:\Users\umroot\Desktop\NatNet_SDK_2.10\NatNetSDK\Samples\SampleClient\SampleClient.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:04.01
