@@ -38,10 +38,11 @@ Usage [optional]:
 #include <math.h> 
 #include <tchar.h>
 #include <conio.h>
-#include <winsock2.h>
+//#include <winsock2.h>
 #include <process.h> //multi-threading
 #include "comms.h"
 #include "Globals.h"
+//#include "UDPTHREAD.h"
 
 #include "NatNetTypes.h"
 #include "NatNetClient.h"
@@ -66,12 +67,20 @@ unsigned int MyServersCommandPort = 3131;
 int iConnectionType = ConnectionType_Multicast;
 //int iConnectionType = ConnectionType_Unicast;
 
+//Global commands (outputs)
 extern float g_roll_cmd;
 extern float g_pitch_cmd;
 extern float g_yaw_cmd;
 extern float g_thrust_cmd;
 
 extern bool g_new_data;
+
+//Global waypoints (inputs)
+extern float g_input_x;
+extern float g_input_y;
+extern float g_input_z;
+
+extern bool g_input_new_data;
 
 //Global flags
 bool g_user_control = false;
@@ -118,8 +127,8 @@ float _last_derivative_yaw[2]={0,0};
 double _last_t_yaw[2]={0,0};
 
 // PID Gains for X,Y,Z (roll, pitch and yaw are onboard accessed through baseflight software)
-float kp_x=0.8,ki_x=0.1,kd_x=1.8;
-float kp_y=0.8,ki_y=0.1,kd_y=1.8;
+float kp_x=0.6,ki_x=0.1,kd_x=1.6;
+float kp_y=0.6,ki_y=0.1,kd_y=1.6;
 float kp_z=12,ki_z=0.2,kd_z=8;
 float kp_yaw=2.1,ki_yaw=0,kd_yaw=0.66;
 //===========================================================================================
@@ -130,7 +139,7 @@ float roll_ref=0.0, pitch_ref=0.0;  //
 
 
 // HUMMINBIRD CONSTANTS
-const double m = 0.71;
+const double m = 0.70;
 
 //Record data in a CSV file
 FILE *Record; // File for recording data
@@ -310,6 +319,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	//Create UDP Client Thread for ACI Communication
 	HANDLE h_UDPClientThread = (HANDLE)_beginthread(UDPClient, 0, (void*)hcommsMutex);
 
+	//Create UDP Server Thread for xyz input data
+	//HANDLE h_xyzUDPserverThread = (HANDLE)_beginthread(xyzUDPserver, 0, (void*)hcommsMutex);
+
 	// Ready to receive marker stream!
 	printf("\nClient is connected to server and listening for data...\n");
 
@@ -424,8 +436,8 @@ int _tmain(int argc, _TCHAR* argv[])
 					{
 						show_maneuver_num = 10;
 						z_ref += 0.05;
-						if (z_ref > 1)
-							z_ref = 1;
+						//if (z_ref > 1)
+							//z_ref = 1;
 					}
 					ReleaseMutex(hcommsMutex);	
 					break;	
@@ -556,6 +568,23 @@ int _tmain(int argc, _TCHAR* argv[])
 					}
 					ReleaseMutex(huserMutex);	
 					break;
+				case '[':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 7; //wand 2 DOF control
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case ']':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 8; //wand 3 DOF contcccvuqrol	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+
 				case ';':
 					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
 					if (dwWaitResult == WAIT_OBJECT_0)
@@ -581,6 +610,14 @@ int _tmain(int argc, _TCHAR* argv[])
 						maneuver_time = 0;
 						start_maneuver_time = timeGetTime();
 						show_maneuver_num = 5; //lissajous curve	
+					}
+					ReleaseMutex(huserMutex);	
+					break;
+				case '6':
+					dwWaitResult = WaitForSingleObject(huserMutex, INFINITE);
+					if (dwWaitResult == WAIT_OBJECT_0)
+					{	
+						show_maneuver_num = 6; //PID tunning
 					}
 					ReleaseMutex(huserMutex);	
 					break;
@@ -774,7 +811,7 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 						
 	}
 	else if (show_maneuver_num == 1) { //circle
-		double  omega = 18; //[degrees/s]
+		double  omega = 30; //[degrees/s]
 		double  A = 0.3; //[degrees/s]
 		double  B = 0.3; //[degrees/s]
 		
@@ -786,6 +823,17 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 	else if (show_maneuver_num ==2) { //wand height control	
 		z_ref = data->RigidBodies[1].y;
 	}
+	else if (show_maneuver_num ==7) { //wand height control	and lateral control
+		z_ref = data->RigidBodies[1].y;
+		y_ref = -data->RigidBodies[1].z; 
+	}
+	else if (show_maneuver_num ==8) { //wand height control, and lateral control, and longitudinal control
+		z_ref = data->RigidBodies[1].y;
+		y_ref = -data->RigidBodies[1].z; 
+		x_ref = -data->RigidBodies[1].x-0.6; // 
+	}
+
+
 	else if (show_maneuver_num ==3) { //landing
 		x_ref = data->RigidBodies[0].x;
 		y_ref = -data->RigidBodies[0].z;
@@ -793,21 +841,21 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 		yaw_ref = 0;
 	}
 	else if (show_maneuver_num ==4) { //lissajous curve
-		double  A = 0.3; //[degrees/s]
-		double  B = 0.3; //[degrees/s]
-		double  a = 3; //[degrees/s]
-		double  b = 4; //[degrees/s]
-		double  delta = 90; //[degrees/s]
-		double  w = 5; //[degrees/s]
+		double  A = 0.38; //[m]
+		double  B = 0.38; //[m]
+		double  a = 9; //[degrees/s ]
+		double  b = 8; //[degrees/s]
+		double  delta = 90; //[degrees]
+		double  w = 11.9; //[degrees/s] period for a=3 b=4 and w =5 is 72seconds
 
 		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
 
-		x_ref = A*sin((w*a*maneuver_time+delta)*M_PI/180)-A;
+		x_ref = A*sin((w*a*maneuver_time+delta)*M_PI/180);
 		y_ref = B*sin(w*b*maneuver_time*M_PI/180);
 	}
-	else if (show_maneuver_num ==5) { //lissajous curve
-		double  d = 3; //[time = distance in 10^1 cm]
-		double  v = 0.05;
+	else if (show_maneuver_num ==5) { //space filling curve (Hilbert curve)
+		double  d = 1; //[time = distance in 10^1 cm]
+		double  v = 0.12;
 		double aux;
 		maneuver_time = 1.0*(timeGetTime()-start_maneuver_time)/1000.0;//[s]
 		double t;
@@ -881,6 +929,7 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 
 
 
+
 		
 		if (maneuver_time>=0 & maneuver_time<16*d) {
 			x_ref = x_ref*v;
@@ -911,6 +960,19 @@ void __cdecl DataHandler(sFrameOfMocapData* data, void* pUserData)
 
 	}
 
+
+	else if (show_maneuver_num == 6) { //PID Tunning
+		x_ref = 0.5;
+		y_ref = 0.5;
+	}
+
+	// Sefaty code to keep the refs always inside the safe region
+	if (z_ref > 1.5) z_ref = 1.5;
+	if (z_ref < 0) z_ref = 0;
+	if (x_ref > 0.5) x_ref = 0.5;
+	if (x_ref < -0.5) x_ref = -0.5;
+	if (y_ref > 0.5) y_ref = 0.5;
+	if (y_ref < -0.5) y_ref = 0.5;
 
 
 	// CONTROLLER GOES HERE

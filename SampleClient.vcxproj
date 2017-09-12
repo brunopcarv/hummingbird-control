@@ -191,10 +191,17 @@
     <ClCompile Include="comms.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="SampleClient.cpp" />
+    <ClCompile Include="JSON.cpp" />
+    <ClCompile Include="JSONValue.cpp" />
+    <ClCompile Include="UDPTHREAD.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="comms.h" />
     <ClInclude Include="Globals.h" />
+    <ClInclude Include="JSONValue.h" />
+    <ClInclude Include="JSON.h" />
+    <ClInclude Include="json.hpp" />
+    <ClInclude Include="UDPTHREAD.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
